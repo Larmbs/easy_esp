@@ -2,23 +2,27 @@ use serde::{Deserialize, Serialize};
 use std::io::{Result, BufReader};
 use std::net::{SocketAddr, TcpListener, TcpStream};
 use serde_json;
-use std::marker::PhantomData;
 
+mod tcp_conn;
+use queued_rust::Queue;
+
+#[cfg(test)]
+mod tests;
 
 ///  F is a handler function
 ///  T is the data type being sent back and forth
 ///
-pub struct Server<F, T>
+pub struct TCPServer<F, T>
 where
     F: Fn(T),
     T: Serialize + for<'a> Deserialize<'a>,
 {
     listener: TcpListener,
     handler: F,
-    _phantom: PhantomData<T>, // Meant to stop unused generic T error in struct
+    send_queue: Queue<T>, // Represent a queue of internal requests to be sent to clients
 }
 
-impl<F, T> Server<F, T>
+impl<F, T> TCPServer<F, T>
 where
     F: Fn(T),
     T: Serialize + for<'a> Deserialize<'a>,
@@ -28,12 +32,20 @@ where
         // Formatting add
         let addr = server_addr.to_string();
         let listener = TcpListener::bind(addr)?;
-        Ok(Self { listener, handler, _phantom: PhantomData })
+        let send_queue = Queue::new();
+        Ok(Self { listener, handler, send_queue})
     }
 
     /// Get socket addr
     pub fn get_addr(&self) -> SocketAddr {
         self.listener.local_addr().unwrap()
+    }
+
+    /// Go through every send request and send it to the appropriate channel
+    pub fn handle_send_requests(&mut self) {
+        while let Some(item) = self.send_queue.first() {
+
+        }
     }
 
     /// Handles request
@@ -62,6 +74,3 @@ where
         }
     }
 }
-
-#[cfg(test)]
-mod tests;

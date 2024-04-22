@@ -6,6 +6,7 @@ version = 3
 name = "easy_esp"
 version = "0.1.1"
 dependencies = [
+ "queued_rust",
  "serde",
  "serde_json",
 ]
@@ -24,6 +25,12 @@ checksum = "3d1597b0c024618f09a9c3b8655b7e430397a36d23fdafec26d6965e9eec3eba"
 dependencies = [
  "unicode-ident",
 ]
+
+[[package]]
+name = "queued_rust"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2a4041608e804a7ea549c1e4077ba93ea188c7538735a7249abaa46d6826c8c3"
 
 [[package]]
 name = "quote"
