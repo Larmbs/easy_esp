@@ -1,5 +1,67 @@
+use serde::{Deserialize, Serialize};
+use std::io::{Result, BufReader};
+use std::net::{SocketAddr, TcpListener, TcpStream};
+use serde_json;
+use std::marker::PhantomData;
 
 
+///  F is a handler function
+///  T is the data type being sent back and forth
+///
+pub struct Server<F, T>
+where
+    F: Fn(T),
+    T: Serialize + for<'a> Deserialize<'a>,
+{
+    listener: TcpListener,
+    handler: F,
+    _phantom: PhantomData<T>, // Meant to stop unused generic T error in struct
+}
+
+impl<F, T> Server<F, T>
+where
+    F: Fn(T),
+    T: Serialize + for<'a> Deserialize<'a>,
+{
+    /// Starts TCP listener and server
+    pub fn open(server_addr: SocketAddr, handler: F) -> Result<Self> {
+        // Formatting add
+        let addr = server_addr.to_string();
+        let listener = TcpListener::bind(addr)?;
+        Ok(Self { listener, handler, _phantom: PhantomData })
+    }
+
+    /// Get socket addr
+    pub fn get_addr(&self) -> SocketAddr {
+        self.listener.local_addr().unwrap()
+    }
+
+    /// Handles request
+    fn handle_request(&self, stream: &mut TcpStream) -> Result<()> {
+        // Creating buffer reader
+        let buf_reader = BufReader::new( stream);
+
+        // Parse out buffer data into an object
+        let data: T = serde_json::from_reader(buf_reader)?;
+        
+        // Calling handler func with data
+        (self.handler)(data);
+
+        Ok(())
+    }
+
+    /// Starts TCP server
+    pub fn listen(&self) {
+        // Listening for incoming TCP streams
+        for stream in self.listener.incoming() {
+            let mut stream = stream.unwrap();
+
+            if let Err(e) = self.handle_request(&mut stream) { // Handle request but if its error log it
+                println!("{}", e);
+            }
+        }
+    }
+}
 
 #[cfg(test)]
 mod tests;
