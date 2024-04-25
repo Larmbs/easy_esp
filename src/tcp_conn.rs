@@ -30,7 +30,7 @@ impl<T> TCPConn<T> where T: Serialize + for<'a> Deserialize<'a> {
             let buf_reader = BufReader::new(&mut self.conn);
 
 
-            let data: T = serde_json::from_reader(buf_reader)?;
+            let data: T = serde_json::from_reader(buf_reader).unwrap();
 
         }
     }

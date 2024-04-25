@@ -8,6 +8,8 @@ use queued_rust::Queue;
 
 #[cfg(test)]
 mod tests;
+mod tcp_conn;
+use tcp_conn::TCPConn;
 
 ///  F is a handler function
 ///  T is the data type being sent back and forth
@@ -19,6 +21,7 @@ where
 {
     listener: TcpListener,
     handler: F,
+    handles: Vec<TCPConn<T>>,
     send_queue: Queue<T>, // Represent a queue of internal requests to be sent to clients
 }
 
@@ -32,8 +35,10 @@ where
         // Formatting add
         let addr = server_addr.to_string();
         let listener = TcpListener::bind(addr)?;
+        let handles = vec![];
         let send_queue = Queue::new();
-        Ok(Self { listener, handler, send_queue})
+
+        Ok(Self { listener, handler, handles,  send_queue})
     }
 
     /// Get socket addr
@@ -44,12 +49,6 @@ where
     /// Go through every send request and send it to the appropriate channel
     pub fn handle_send_requests(&mut self) {
         while let Some(item) = self.send_queue.first() {
-            
-
-
-
-
-
         }
     }
 
