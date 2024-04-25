@@ -1,7 +1,7 @@
 use std::net::{TcpStream, SocketAddr};
 use std::marker::PhantomData;
 use serde::{Serialize, Deserialize};
-use std::io::Result;
+use std::io::{BufReader, Read, Result};
 
 
 
@@ -22,11 +22,15 @@ impl<T> TCPConn<T> where T: Serialize + for<'a> Deserialize<'a> {
             _phantom: PhantomData,
         })
     }
-
+    //fn read_stream(&mut self)
     /// Begins server listening
-    pub fn listen(&self) {
+    pub fn listen(&mut self) {
         // Loop until a exit request or timeout
         loop {
+            let buf_reader = BufReader::new(&mut self.conn);
+
+
+            let data: T = serde_json::from_reader(buf_reader)?;
 
         }
     }

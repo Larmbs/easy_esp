@@ -3,7 +3,7 @@ use std::io::{Result, BufReader};
 use std::net::{SocketAddr, TcpListener, TcpStream};
 use serde_json;
 
-mod tcp_conn;
+//mod tcp_conn;
 use queued_rust::Queue;
 
 #[cfg(test)]
