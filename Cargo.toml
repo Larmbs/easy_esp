@@ -1,6 +1,6 @@
 [package]
 name = "easy_esp"
-version = "0.2.5"
+version = "0.3.0"
 edition = "2021"
 description = "Wrapper around socket functionality to make using devices safer and easier"
 license = "MIT"
@@ -14,4 +14,4 @@ name = "mybin"
 path = "src/bin.rs"
 
 [dependencies]
-tokio = { version = "1.37.0", features = ["full"] }
+tokio = { version = "1.37.0", features = ["rt", "net", "sync", "macros", "rt-multi-thread"] }
