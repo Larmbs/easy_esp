@@ -54,7 +54,7 @@ where
                     let data = &buf[..n];
                     let data_string = String::from_utf8_lossy(data).to_string();
 
-                    let response = self.handler.lock().unwrap().handle_request(data_string);
+                    let (response, _) = self.handler.lock().unwrap().handle_request(data_string);
                     let _ = self.send_message(&response).await;
                 }
                Err(_) => {

@@ -68,7 +68,12 @@ where
         let message_handler: Arc<Mutex<H>> = Arc::new(Mutex::new(message_handler));
         let handles = vec![];
 
-        let (send_all_tx, _rx) = broadcast::channel(10);
+        // doesn't really matter the count
+        let count = 16;
+
+        let (send_all_tx, _) = broadcast::channel(count);
+        let (tx, rx) = broadcast::channel::<String>(count);
+        
         Server {
             address,
             handles,

@@ -4,9 +4,10 @@
 */
 pub type Request = String;
 pub type Response = String;
+pub type ServerRequest = String;
 
 pub trait Handler {
-    fn handle_request(&self, message: Request) -> Response;
+    fn handle_request(&self, message: Request) -> (Response, ServerRequest);
 }
 
 pub struct TestHandler {}
@@ -17,9 +18,10 @@ impl TestHandler {
     }
 }
 impl Handler for TestHandler {
-    fn handle_request(&self, message: Request) -> Response {
+    fn handle_request(&self, message: Request) -> (Response, ServerRequest) {
         println!("[Handler] received a message ({})", message);
-        String::from("Hi back")
+
+        (String::from("Hi back"), String::from(""))
     }
 }
 
