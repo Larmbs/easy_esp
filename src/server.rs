@@ -7,8 +7,7 @@ use std::sync::{Mutex, Arc};
 /// All this server does is manage clients and verify messaging format
 /// as well as managing sending and receiving messages
 struct Server<H> where H: Handler {
-    verbose: bool,
-    listener: TcpListener,
+    address: SocketAddr,
     clients: Vec<Client<H>>,
 
     message_handler: Arc<Mutex<H>>, // Shared handler func to handle all incoming messages
@@ -17,7 +16,7 @@ struct Server<H> where H: Handler {
 impl<H> Server<H> where H: Handler {
     /// Get socket addr
     pub fn get_addr(&self) -> SocketAddr {
-        self.listener.local_addr().unwrap()
+        self.address
     }
 
     /// Drops all clients
@@ -39,26 +38,27 @@ impl<H> Server<H> where H: Handler {
     }
 
     /// Start listening for incoming connections
-    pub fn listen(&self) {
-        if self.verbose {println!("[Server] starting on {}...", self.get_addr())}
+    pub fn listen(&mut self) {
+        println!("[Server] starting on {}...", self.get_addr());
+        let listener = TcpListener::bind(self.address).unwrap();
+
 
         // Listening for stream
-        for stream in self.listener.incoming() {
+        for stream in listener.incoming() {
             if let Ok(stream) = stream {
-                println!("Received a new connection from {}", stream.peer_addr().unwrap());
+                println!("[Server] Received a new connection from {}", stream.peer_addr().unwrap());
+                self.add_client(stream);
             }
         }
     }
 
-    pub async fn open(addr: SocketAddr, message_handler: H, verbose: bool) -> io::Result<Server<H>> {
-        let listener = TcpListener::bind(addr)?;
+    pub async fn open(address: SocketAddr, message_handler: H) -> io::Result<Server<H>> {
         let clients = vec![];
 
         let message_handler = Arc::new(Mutex::new(message_handler));
 
         Ok(Server {
-            verbose,
-            listener,
+            address,
             clients,
             message_handler
         })
