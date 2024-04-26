@@ -1,4 +1,3 @@
-
 /*
  * Types that show
  *
@@ -10,21 +9,19 @@ pub trait Handler {
     fn handle_request(&self, message: Request) -> Response;
 }
 
-
 pub struct TestHandler {}
 
 impl TestHandler {
     pub fn new() -> Self {
-        TestHandler {
-        }
+        TestHandler {}
     }
 }
 impl Handler for TestHandler {
     fn handle_request(&self, message: Request) -> Response {
+        println!("[Handler] received a message ({})", message);
         String::from("Hi back")
     }
 }
 
 unsafe impl Sync for TestHandler {}
 unsafe impl Send for TestHandler {}
-

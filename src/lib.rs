@@ -1,14 +1,6 @@
-mod server;
-pub mod handler;
 mod conn;
+pub mod handler;
+mod server;
 
-
-pub use server::Server;
 pub use handler::TestHandler;
-
-
-
-
-
-
-
+pub use server::Server;

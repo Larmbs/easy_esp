@@ -1,8 +1,8 @@
 use super::handler::Handler;
 use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};
+use tokio::sync::broadcast::{self, Sender};
 use tokio::task::JoinHandle;
-use tokio::sync::broadcast::{Sender, self};
 
 use super::conn::Conn;
 use tokio::net::{TcpListener, TcpStream};
@@ -32,18 +32,22 @@ where
 
     /// Add a conn
     pub fn add_conn(&mut self, conn_stream: TcpStream) {
-        let mut conn = Conn::new(conn_stream, self.message_handler.clone(), self.tx.subscribe());
-    
+        let mut conn = Conn::new(
+            conn_stream,
+            self.message_handler.clone(),
+            self.tx.subscribe(),
+        );
+
         let handle = tokio::spawn(async move {
-            conn.listen().await; // assuming listen() returns a future
+            conn.listen().await;
         });
-        
+
         self.handles.push(handle);
     }
 
     /// Send all
     pub fn send_all(&mut self, message: String) {
-        let _ = self.tx.send(message);
+        self.tx.send(message).unwrap();
     }
 
     /// Start listening for incoming connections
@@ -61,7 +65,7 @@ where
     }
 
     pub fn new(address: SocketAddr, message_handler: H) -> Self {
-        let message_handler = Arc::new(Mutex::new(message_handler));
+        let message_handler: Arc<Mutex<H>> = Arc::new(Mutex::new(message_handler));
         let handles = vec![];
 
         let (tx, _rx) = broadcast::channel(10);
