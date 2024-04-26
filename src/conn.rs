@@ -1,4 +1,5 @@
 use std::error::Error;
+use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};
 use tokio::net::TcpStream;
 use tokio::sync::broadcast::Receiver;
@@ -27,12 +28,14 @@ where
         }
     }
 
+    pub fn get_addr(&self) -> SocketAddr {
+        self.stream.peer_addr().unwrap()
+    }
+
     /// Listens for peer and uses handler function to respond
     pub async fn listen(&mut self) {
         loop {
-            // Waiting for readable socket
-            //self.stream.readable().await.unwrap();
-
+            // Tries to listen for any new server requests
             if let Ok(message) = self.rx.try_recv() {
                 println!("{}", message);
                 self.send_message(&message).await.unwrap();
@@ -40,30 +43,25 @@ where
 
             let mut buf = [0; 4096];
 
+            // Waiting for read and dealing with it
             match self.stream.try_read(&mut buf) {
                 Ok(0) => {
                     continue;
                 }
                 Ok(n) => {
                     // n > 0
+                    println!("[Server] received message from {} of length {}", self.get_addr(), n);
                     let data = &buf[..n];
                     let data_string = String::from_utf8_lossy(data).to_string();
 
                     let response = self.handler.lock().unwrap().handle_request(data_string);
                     let _ = self.send_message(&response).await;
                 }
-                Err(e) => {
+               Err(_) => {
                     //println!("{:?}", e);
                     continue;
                 }
             }
-        }
-    }
-
-    /// Listen for send requests
-    pub async fn listen_for_server_request(&mut self) {
-        while let Ok(message) = self.rx.recv().await {
-            self.send_message(&message).await.unwrap();
         }
     }
 

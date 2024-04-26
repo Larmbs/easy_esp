@@ -17,7 +17,7 @@ where
     address: SocketAddr,
 
     handles: Vec<JoinHandle<()>>,
-    tx: Sender<String>,
+    send_all_tx: Sender<String>,
     message_handler: Arc<Mutex<H>>, // Shared handler func to handle all incoming messages
 }
 
@@ -35,7 +35,7 @@ where
         let mut conn = Conn::new(
             conn_stream,
             self.message_handler.clone(),
-            self.tx.subscribe(),
+            self.send_all_tx.subscribe(),
         );
 
         let handle = tokio::spawn(async move {
@@ -47,7 +47,7 @@ where
 
     /// Send all
     pub fn send_all(&mut self, message: String) {
-        self.tx.send(message).unwrap();
+        self.send_all_tx.send(message).unwrap();
     }
 
     /// Start listening for incoming connections
@@ -68,11 +68,11 @@ where
         let message_handler: Arc<Mutex<H>> = Arc::new(Mutex::new(message_handler));
         let handles = vec![];
 
-        let (tx, _rx) = broadcast::channel(10);
+        let (send_all_tx, _rx) = broadcast::channel(10);
         Server {
             address,
             handles,
-            tx,
+            send_all_tx,
             message_handler,
         }
     }
