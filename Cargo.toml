@@ -1,6 +1,6 @@
 [package]
 name = "easy_esp"
-version = "0.1.1"
+version = "0.2.3"
 edition = "2021"
 description = "Wrapper around socket functionality to make using devices safer and easier"
 license = "MIT"
