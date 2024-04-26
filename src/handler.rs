@@ -9,3 +9,22 @@ pub type Response = String;
 pub trait Handler {
     fn handle_request(&self, message: Request) -> Response;
 }
+
+
+pub struct TestHandler {}
+
+impl TestHandler {
+    pub fn new() -> Self {
+        TestHandler {
+        }
+    }
+}
+impl Handler for TestHandler {
+    fn handle_request(&self, message: Request) -> Response {
+        todo!()
+    }
+}
+
+unsafe impl Sync for TestHandler {}
+unsafe impl Send for TestHandler {}
+
