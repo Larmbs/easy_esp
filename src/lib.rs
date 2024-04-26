@@ -1,5 +1,3 @@
-#[allow(unused)]
-
 mod server;
 pub mod handler;
 mod conn;

@@ -21,7 +21,7 @@ impl TestHandler {
 }
 impl Handler for TestHandler {
     fn handle_request(&self, message: Request) -> Response {
-        todo!()
+        String::from("Hi back")
     }
 }
 

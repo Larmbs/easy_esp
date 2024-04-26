@@ -2,20 +2,23 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
 use std::sync::{Mutex, Arc};
 use std::error::Error;
+use tokio::sync::broadcast::Receiver;
 
 use super::handler::Handler;
 
 pub struct Conn<H> where H: Handler + Sync + Send {
     stream: TcpStream,
     handler: Arc<Mutex<H>>,
+    rx: Receiver<String>,
 }
 
 impl<H> Conn<H> where H: Handler + Sync + Send {
     /// Creates a new conn instance
-    pub fn new(stream: TcpStream, handler: Arc<Mutex<H>>) -> Self {
+    pub fn new(stream: TcpStream, handler: Arc<Mutex<H>>, rx: Receiver<String>) -> Self {
         Conn {
             stream,
             handler,
+            rx
         }
     }
 
@@ -37,7 +40,7 @@ impl<H> Conn<H> where H: Handler + Sync + Send {
                     let data_string = String::from_utf8_lossy(data).to_string();
 
                     let response = self.handler.lock().unwrap().handle_request(data_string);
-                    self.send_message(&response).await;
+                    let _ = self.send_message(&response).await;
                 }
                 Err(e) => {
                     println!("{:?}", e);
