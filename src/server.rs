@@ -29,7 +29,7 @@ where
     pub fn get_addr(&self) -> SocketAddr {
         self.address
     }
-
+    
     /// Add a conn
     pub fn add_conn(&mut self, conn_stream: TcpStream) {
         let mut conn = Conn::new(
@@ -37,11 +37,11 @@ where
             self.message_handler.clone(),
             self.send_all_tx.subscribe(),
         );
-
+        
         let handle = tokio::spawn(async move {
             conn.listen().await;
         });
-
+        
         self.handles.push(handle);
     }
 
@@ -49,7 +49,7 @@ where
     pub fn send_all(&mut self, message: String) {
         self.send_all_tx.send(message).unwrap();
     }
-
+    
     /// Start listening for incoming connections
     pub async fn listen(&mut self) {
         println!("[Server] starting on {}...", self.get_addr());
@@ -63,7 +63,7 @@ where
             }
         }
     }
-
+    
     pub fn new(address: SocketAddr, message_handler: H) -> Self {
         let message_handler: Arc<Mutex<H>> = Arc::new(Mutex::new(message_handler));
         let handles = vec![];
