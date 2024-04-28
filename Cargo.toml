@@ -14,5 +14,6 @@ name = "mybin"
 path = "src/bin.rs"
 
 [dependencies]
+chrono = "0.4.38"
 thiserror = "1.0.59"
 tokio = { version = "1.37.0", features = ["rt", "net", "sync", "macros", "rt-multi-thread"] }
