@@ -1,10 +1,12 @@
-use std::error::Error;
 use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};
 use tokio::net::TcpStream;
-use tokio::sync::broadcast::Receiver;
+use tokio::sync::broadcast::{Receiver, Sender};
 
 use super::handler::Handler;
+use super::ServerCMD;
+use super::errors::ConnectionError;
+
 
 pub struct Conn<H>
 where
@@ -13,6 +15,7 @@ where
     stream: TcpStream,
     handler: Arc<Mutex<H>>,
     rx: Receiver<String>,
+    tx: Sender<ServerCMD>,
 }
 
 impl<H> Conn<H>
@@ -20,11 +23,12 @@ where
     H: Handler + Sync + Send,
 {
     /// Creates a new conn instance
-    pub fn new(stream: TcpStream, handler: Arc<Mutex<H>>, rx: Receiver<String>) -> Self {
+    pub fn new(stream: TcpStream, handler: Arc<Mutex<H>>, rx: Receiver<String>, tx: Sender<ServerCMD>) -> Self {
         Conn {
             stream,
             handler,
             rx,
+            tx,
         }
     }
 
@@ -54,11 +58,13 @@ where
                     let data = &buf[..n];
                     let data_string = String::from_utf8_lossy(data).to_string();
 
-                    let (response, _) = self.handler.lock().unwrap().handle_request(data_string);
+                    let (response, cmd) = self.handler.lock().unwrap().handle_request(data_string);
+                    if let Some(cmd) = cmd {
+                        self.tx.send(cmd).unwrap();
+                    }
                     let _ = self.send_message(&response).await;
                 }
                Err(_) => {
-                    //println!("{:?}", e);
                     continue;
                 }
             }
@@ -66,21 +72,14 @@ where
     }
 
     /// Sends a message to peer
-    pub async fn send_message(&self, message: &String) -> Result<(), Box<dyn Error>> {
+    pub async fn send_message(&self, message: &String) -> Result<(), ConnectionError> {
         loop {
             // Wait for the socket to be writable
-            self.stream.writable().await?;
+            self.stream.writable().await.map_err(|_| {ConnectionError::TimedOut})?;
 
             match self.stream.try_write(message.as_bytes()) {
-                Ok(n) => {
-                    println!("[Server] sent {} bytes!", n);
-                    break;
-                }
-
-                Err(e) => {
-                    println!("{:?}", e);
-                    return Err(Box::new(e));
-                }
+                Ok(n) => {println!("[Server] sent {} bytes!", n); break;}
+                Err(e) => {eprintln!("{:?}", e); return Err(ConnectionError::TimedOut);}
             }
         }
 

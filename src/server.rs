@@ -1,7 +1,7 @@
 use super::handler::Handler;
 use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};
-use tokio::sync::broadcast::{self, Sender};
+use tokio::sync::broadcast::{self, Sender, Receiver};
 use tokio::task::JoinHandle;
 
 use super::conn::Conn;
@@ -18,6 +18,8 @@ where
 
     handles: Vec<JoinHandle<()>>,
     send_all_tx: Sender<String>,
+    cmd_rx: Receiver<ServerCMD>,
+    cmd_tx: Sender<ServerCMD>,
     message_handler: Arc<Mutex<H>>, // Shared handler func to handle all incoming messages
 }
 
@@ -36,6 +38,7 @@ where
             conn_stream,
             self.message_handler.clone(),
             self.send_all_tx.subscribe(),
+            self.cmd_tx.clone(),
         );
         
         let handle = tokio::spawn(async move {
@@ -46,7 +49,7 @@ where
     }
 
     /// Send all
-    pub fn send_all(&mut self, message: String) {
+    pub fn send_all(&self, message: String) {
         self.send_all_tx.send(message).unwrap();
     }
     
@@ -56,11 +59,27 @@ where
         let listener = TcpListener::bind(self.address).await.unwrap();
 
         loop {
-            // The second item contains the IP and port of the new connection.
-            if let Ok((socket, addr)) = listener.accept().await {
-                println!("[Server] Received a new connection from {}", addr);
-                self.add_conn(socket);
-            }
+            tokio::select! {
+                // Accept a new connection
+                Ok((socket, addr)) = listener.accept() => {
+                    println!("[Server] Received a new connection from {}", addr);
+                    self.add_conn(socket);
+                },
+                // Receive a message from the rx channel
+                Ok(cmd) = self.cmd_rx.recv() => {
+                    match cmd {
+                        ServerCMD::ShutDown(code) =>  {
+                            println!("[Server] Server shutting down with code {}...", code);
+                        }
+                        ServerCMD::SendAll(message) => {
+                            self.send_all(message);
+                        }
+                        ServerCMD::Kick(addr) => {
+                            println!("[Server] Kicking client with addr {}", addr);
+                        }
+                    }
+                }
+            };
         }
     }
     
@@ -72,13 +91,22 @@ where
         let count = 16;
 
         let (send_all_tx, _) = broadcast::channel(count);
-        let (tx, rx) = broadcast::channel::<String>(count);
+        let (cmd_tx, cmd_rx) = broadcast::channel::<ServerCMD>(count);
         
         Server {
             address,
             handles,
             send_all_tx,
+            cmd_rx,
+            cmd_tx,
             message_handler,
         }
     }
+}
+
+#[derive(Clone, Debug)]
+pub enum ServerCMD {
+    ShutDown(u32),      // Error code
+    SendAll(String),    // Message
+    Kick(SocketAddr),   // Kick a certain client
 }
