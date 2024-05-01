@@ -12,3 +12,13 @@ pub enum ServerCMD {
     /// Instructs the server to kick a certain client identified by its socket address.
     Kick(SocketAddr), // Kick a certain client
 }
+
+/// Set of commands the server can send a conn object
+#[derive(Clone, Debug)]
+pub enum ConnCMD {
+    /// Stops socket connection
+    Kick,
+
+    /// Send some message to your client
+    Send(String), 
+}

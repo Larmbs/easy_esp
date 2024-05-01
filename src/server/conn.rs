@@ -1,21 +1,31 @@
+use std::{
+    io,
+    net::SocketAddr,
+    sync::{Arc, Mutex},
+};
+// Tokio modules
 use tokio::net::TcpStream;
-use std::{io, sync::{ Arc, Mutex }};
-use tokio::sync::broadcast::{Receiver, Sender };
-use std::net::SocketAddr;
+use tokio::sync::broadcast::{Receiver, Sender};
 
-use crate::RequestHandler;
-use super::ServerCMD;
+use super::{ConnCMD, ServerCMD};
 use crate::errors::ConnectionError;
+use super::RequestHandler;
 
 /// Represents a connection to a client.
-pub struct Conn<H> where H: RequestHandler + Sync + Send {
+pub struct Conn<H>
+where
+    H: RequestHandler + Sync + Send,
+{
     stream: TcpStream,
     handler: Arc<Mutex<H>>,
-    rx: Receiver<String>,
+    rx: Receiver<ConnCMD>,
     tx: Sender<ServerCMD>,
 }
 
-impl<H> Conn<H> where H: RequestHandler + Sync + Send {
+impl<H> Conn<H>
+where
+    H: RequestHandler + Sync + Send,
+{
     /// Creates a new connection instance.
     ///
     /// # Arguments
@@ -31,11 +41,14 @@ impl<H> Conn<H> where H: RequestHandler + Sync + Send {
     pub fn new(
         stream: TcpStream,
         handler: Arc<Mutex<H>>,
-        rx: Receiver<String>,
-        tx: Sender<ServerCMD>
+        rx: Receiver<ConnCMD>,
+        tx: Sender<ServerCMD>,
     ) -> Self {
         // Telling handler about new client
-        let cmd = handler.lock().unwrap().client_connect(stream.peer_addr().unwrap());
+        let cmd = handler
+            .lock()
+            .unwrap()
+            .client_connect(stream.peer_addr().unwrap());
 
         // Executing handlers request
         if let Some(cmd) = cmd {
@@ -62,8 +75,15 @@ impl<H> Conn<H> where H: RequestHandler + Sync + Send {
     pub async fn listen(&mut self) {
         loop {
             // Tries to listen for any new server requests
-            if let Ok(message) = self.rx.try_recv() {
-                self.send_message(&message).await.unwrap();
+            if let Ok(cmd) = self.rx.try_recv() {
+                match cmd {
+                    ConnCMD::Send(message) => {
+                        self.send_message(&message).await.unwrap();
+                    }
+                    ConnCMD::Kick => {
+                        break;
+                    }
+                }
             }
 
             let mut buf = [0; 4096];
@@ -77,9 +97,14 @@ impl<H> Conn<H> where H: RequestHandler + Sync + Send {
                 Ok(n) => {
                     let data = &buf[..n];
                     let data_string = String::from_utf8_lossy(data).to_string();
-                    println!("[Server <- {}] received ({}))!", self.get_addr(), data_string);
+                    println!(
+                        "[Server <- {}] received ({}))!",
+                        self.get_addr(),
+                        data_string
+                    );
 
-                    let (response, cmd) = self.handler
+                    let (response, cmd) = self
+                        .handler
                         .lock()
                         .unwrap()
                         .handle_request(data_string, self.get_addr());
@@ -114,7 +139,10 @@ impl<H> Conn<H> where H: RequestHandler + Sync + Send {
     pub async fn send_message(&self, message: &String) -> Result<(), ConnectionError> {
         loop {
             // Wait for the socket to be writable
-            self.stream.writable().await.map_err(|_| ConnectionError::TimedOut)?;
+            self.stream
+                .writable()
+                .await
+                .map_err(|_| ConnectionError::TimedOut)?;
 
             match self.stream.try_write(message.as_bytes()) {
                 Ok(_) => {
@@ -132,10 +160,17 @@ impl<H> Conn<H> where H: RequestHandler + Sync + Send {
     }
 }
 
-impl<H> Drop for Conn<H> where H: RequestHandler + Sync + Send {
+impl<H> Drop for Conn<H>
+where
+    H: RequestHandler + Sync + Send,
+{
     fn drop(&mut self) {
         // Making sure handler knows of client disconnect
-        let cmd = self.handler.lock().unwrap().client_disconnect(self.get_addr());
+        let cmd = self
+            .handler
+            .lock()
+            .unwrap()
+            .client_disconnect(self.get_addr());
 
         // If the handler wants to make a server request then ok
         if let Some(cmd) = cmd {

@@ -1,10 +1,7 @@
 //! This module defines types and traits for handling requests and responses in a server.
 
-use std::net::SocketAddr;
 use super::ServerCMD;
-
-pub type Request = String;    /// Represents a request received by the server.
-pub type Response = String;   /// Represents a response to be sent by the server.
+use std::net::SocketAddr;
 
 /// Trait for handling incoming requests.
 pub trait RequestHandler {
@@ -18,9 +15,31 @@ pub trait RequestHandler {
     /// # Returns
     ///
     /// A tuple containing the response to the request and an optional server command.
-    /// 
-    fn handle_request(&mut self, request: Request, origin: SocketAddr) -> (Response, Option<ServerCMD>);
+    fn handle_request(
+        &mut self,
+        request: String,
+        origin: SocketAddr,
+    ) -> (String, Option<ServerCMD>);
 
+    /// Notifies the handler when a client connects to the server.
+    ///
+    /// # Arguments
+    ///
+    /// * `addr` - The socket address of the client that connected.
+    ///
+    /// # Returns
+    ///
+    /// An optional server command.
     fn client_connect(&mut self, addr: SocketAddr) -> Option<ServerCMD>;
+
+    /// Notifies the handler when a client disconnects from the server.
+    ///
+    /// # Arguments
+    ///
+    /// * `addr` - The socket address of the client that disconnected.
+    ///
+    /// # Returns
+    ///
+    /// An optional server command.
     fn client_disconnect(&mut self, addr: SocketAddr) -> Option<ServerCMD>;
 }

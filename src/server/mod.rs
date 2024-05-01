@@ -2,86 +2,53 @@
 //!
 //! The server manages client connections and validates message formats. It also
 //! facilitates sending and receiving messages between clients.
-//!
-//! # Example
-//!
-//! ```
-//! use std::net::SocketAddr;
-//! use easy_esp::{Server, SendBackHandler};
-//!
-//! #[tokio::main]
-//! async fn main() {
-//!     let addr: SocketAddr = "127.0.0.1:8080".parse().unwrap();
-//!     let server = Server::new(addr, SendBackHandler::new());
-//!
-//!     server.listen().await;
-//! }
-//! ```
 
-use super::handler::RequestHandler;
-use std::net::SocketAddr;
-use std::sync::{Arc, Mutex};
-use tokio::net::{TcpListener, TcpStream};
-use tokio::sync::broadcast::{self, Receiver, Sender};
-use tokio::task::JoinHandle;
+// Dependencies and Imports
+use std::{ net::SocketAddr, sync::{ Arc, Mutex } };
+use tokio::{
+    net::{ TcpListener, TcpStream },
+    sync::broadcast::{ self, Receiver, Sender },
+    task::JoinHandle,
+};
 
-mod conn;
+// Submodules
+mod conn; // Connection handling
+mod commands; // Command processing
+mod handler; // Request handling
+
+// Public Interface
 use conn::Conn;
-
-mod commands;
-pub use commands::ServerCMD;
+pub use handler::RequestHandler;
+pub use commands::{ ConnCMD, ServerCMD };
 
 /// The server manages client connections, verifies message formats, and handles sending and receiving messages.
 ///
 /// # Type Parameters
 ///
 /// * `H`: Type that implements the `RequestHandler` trait for handling incoming requests.
-///
-/// # Fields
-///
-/// * `address`: The socket address on which the server is listening.
-/// * `handles`: Vector of join handles for spawned connection tasks.
-/// * `send_all_tx`: Sender channel for broadcasting messages to all clients.
-/// * `cmd_rx`: Receiver channel for receiving commands from clients.
-/// * `cmd_tx`: Sender channel for sending commands to clients.
-/// * `message_handler`: Shared handler function to handle all incoming messages.
-pub struct Server<H>
-where
-    H: RequestHandler + Sync + Send + 'static,
-{
+pub struct Server<H> where H: RequestHandler + Sync + Send + 'static {
     address: SocketAddr,
 
     handles: Vec<JoinHandle<()>>,
-    send_all_tx: Sender<String>,
+    send_all_tx: Sender<ConnCMD>,
     cmd_rx: Receiver<ServerCMD>,
     cmd_tx: Sender<ServerCMD>,
     message_handler: Arc<Mutex<H>>, // Shared handler func to handle all incoming messages
 }
 
-impl<H> Server<H>
-where
-    H: RequestHandler + Sync + Send,
-{
-    /// Gets the socket address of the server.
-    ///
-    /// # Returns
-    ///
-    /// The socket address on which the server is listening.
+impl<H> Server<H> where H: RequestHandler + Sync + Send {
+    /// Returns local socket addr
     pub fn get_addr(&self) -> SocketAddr {
         self.address
     }
 
-    /// Adds a new connection to the server.
-    ///
-    /// # Arguments
-    ///
-    /// * `conn_stream` - The TCP stream representing the connection to the client.
-    pub fn add_conn(&mut self, conn_stream: TcpStream) {
+    /// Creates a new socket connection and thread
+    fn add_conn(&mut self, conn_stream: TcpStream) {
         let mut conn = Conn::new(
             conn_stream,
             self.message_handler.clone(),
             self.send_all_tx.subscribe(),
-            self.cmd_tx.clone(),
+            self.cmd_tx.clone()
         );
 
         let handle = tokio::spawn(async move {
@@ -91,13 +58,9 @@ where
         self.handles.push(handle);
     }
 
-    /// Sends a message to all connected clients.
-    ///
-    /// # Arguments
-    ///
-    /// * `message` - The message to be sent to all clients.
-    pub fn send_all(&self, message: String) {
-        self.send_all_tx.send(message).unwrap();
+    /// Sends all clients a command
+    pub fn send_all(&self, cmd: ConnCMD) {
+        self.send_all_tx.send(cmd).unwrap();
     }
 
     /// Starts listening for incoming connections and commands.
@@ -117,9 +80,10 @@ where
                     match cmd {
                         ServerCMD::ShutDown(code) =>  {
                             println!("[Server] Server shutting down with code {}...", code);
+                            self.send_all(ConnCMD::Kick);
                         }
                         ServerCMD::SendAll(message) => {
-                            self.send_all(message);
+                            self.send_all(ConnCMD::Send(message));
                         }
                         ServerCMD::Kick(addr) => {
                             println!("[Server] Kicking client with addr {}", addr);
@@ -130,16 +94,7 @@ where
         }
     }
 
-    /// Creates a new instance of `Server`.
-    ///
-    /// # Arguments
-    ///
-    /// * `address` - The socket address on which the server will listen for incoming connections.
-    /// * `message_handler` - The handler for processing incoming requests.
-    ///
-    /// # Returns
-    ///
-    /// A new instance of `Server`.
+    /// Creates a new server object
     pub fn new(address: SocketAddr, message_handler: H) -> Self {
         let message_handler: Arc<Mutex<H>> = Arc::new(Mutex::new(message_handler));
         let handles = vec![];

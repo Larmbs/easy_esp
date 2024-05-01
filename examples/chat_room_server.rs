@@ -1,4 +1,4 @@
-use easy_esp::{Request, RequestHandler, Server, Response, ServerCMD};
+use easy_esp::{RequestHandler, Server, ServerCMD};
 use std::net::SocketAddr;
 
 
@@ -14,7 +14,7 @@ impl ChatRoomHandler {
     }
 }
 impl RequestHandler for ChatRoomHandler {
-    fn handle_request(&mut self, request: Request, origin: SocketAddr) -> (Response, Option<ServerCMD>) {
+    fn handle_request(&mut self, request: String, origin: SocketAddr) -> (String, Option<ServerCMD>) {
 
         let response = format!("Ok");
 
