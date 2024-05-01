@@ -16,10 +16,10 @@ impl ChatRoomHandler {
 impl RequestHandler for ChatRoomHandler {
     fn handle_request(&mut self, request: Message, origin: SocketAddr) -> (Message, Option<ServerCMD>) {
 
-        let send_all_msg = create_json_message(format!("{}: {}", origin, request.body), None);
+        let send_all_msg = create_json_message(format!("{}: {}", origin, request.body), 200,  None);
         let cmd: ServerCMD = ServerCMD::SendAll(send_all_msg);
 
-        let send_back_msg = create_json_message(String::new(), None);
+        let send_back_msg = create_json_message(String::new(), 200,  None);
         (send_back_msg, Some(cmd))
     }
     
@@ -27,7 +27,7 @@ impl RequestHandler for ChatRoomHandler {
         // Adds client to client list
         self.clients.push(addr);
 
-        let msg = create_json_message(format!("{} Connected to chat", addr), None);
+        let msg = create_json_message(format!("{} Connected to chat", addr), 200,  None);
         Some(ServerCMD::SendAll(msg))
     }
     
@@ -35,7 +35,7 @@ impl RequestHandler for ChatRoomHandler {
         // Removes addr if it matches disconnected one
         self.clients.retain(|&x| x != addr);
 
-        let msg = create_json_message(format!("{} Disconnect from chat", addr), None);
+        let msg = create_json_message(format!("{} Disconnect from chat", addr), 200, None);
         Some(ServerCMD::SendAll(msg))
     }
 }

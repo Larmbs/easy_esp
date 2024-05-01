@@ -20,13 +20,15 @@ impl Message {
 #[derive(Clone, Debug)]
 #[derive(Serialize, Deserialize)]
 pub struct Header {
+    pub status: u64,
     pub content_type: String,
     pub authorization: Option<String>,
 }
 
 impl Header {
-    pub fn new(content_type: String, authorization: Option<String>) -> Self {
+    pub fn new(status: u64, content_type: String, authorization: Option<String>) -> Self {
         Header {
+            status,
             content_type,
             authorization,
         }
@@ -41,11 +43,11 @@ pub fn convert_to_json(message: Message) -> String {
     serde_json::to_string(&message).unwrap()
 }
 
-pub fn create_json_message(body: String, header: Option<Header>) -> Message {
+pub fn create_json_message(body: String, status: u64, header: Option<Header>) -> Message {
     if let Some(header) = header {
         Message::new(header, body)
     } else {
-        let header = Header::new("json".to_string(), None);
+        let header = Header::new(status, "json".to_string(), None);
         Message::new(header, body)
     }
 }

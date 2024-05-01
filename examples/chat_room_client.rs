@@ -1,6 +1,10 @@
 use tokio::io::{self, AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
 use tokio::net::TcpStream;
 
+fn format_message(body: String) -> String {
+    format!("{{\"header\":{{\"status\":200, \"content_type\": \"json\",\"authorization\":null}}, \"body\": \"{}\"}}", body)
+}
+
 #[tokio::main]
 async fn main() -> io::Result<()> {
     // Connect to the socket
@@ -19,7 +23,7 @@ async fn main() -> io::Result<()> {
                     return;
                 }
             };
-            println!("- {}", String::from_utf8_lossy(&buf[..n]));
+            println!("{}", String::from_utf8_lossy(&buf[..n]));
         }
     });
 
@@ -30,11 +34,13 @@ async fn main() -> io::Result<()> {
             let mut input = String::new();
             io::stdout().flush().await.unwrap();
             reader.read_line(&mut input).await.unwrap();
-            let input = input.trim();
+            let input: &str = input.trim();
             if input == "quit" {
                 break;
             }
-            writer.write_all(input.as_bytes()).await.unwrap();
+            let msg = format_message(input.to_string());
+            println!("{}", msg);
+            writer.write_all(msg.as_bytes()).await.unwrap();
         }
     });
 
