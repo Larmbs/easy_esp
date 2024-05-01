@@ -6,5 +6,5 @@ mod server;
 mod errors;
 mod logging;
 
-pub use handler::{RequestHandler, ChatRoomHandler, SendBackHandler, Request, Response};
+pub use handler::{RequestHandler, Request, Response};
 pub use server::{Server, ServerCMD};

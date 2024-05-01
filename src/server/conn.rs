@@ -1,5 +1,5 @@
 use tokio::net::TcpStream;
-use std::sync::{ Arc, Mutex };
+use std::{io, sync::{ Arc, Mutex }};
 use tokio::sync::broadcast::{Receiver, Sender };
 use std::net::SocketAddr;
 
@@ -34,6 +34,13 @@ impl<H> Conn<H> where H: RequestHandler + Sync + Send {
         rx: Receiver<String>,
         tx: Sender<ServerCMD>
     ) -> Self {
+        // Telling handler about new client
+        let cmd = handler.lock().unwrap().client_connect(stream.peer_addr().unwrap());
+
+        // Executing handlers request
+        if let Some(cmd) = cmd {
+            tx.send(cmd).unwrap();
+        }
         Conn {
             stream,
             handler,
@@ -64,9 +71,10 @@ impl<H> Conn<H> where H: RequestHandler + Sync + Send {
             // Waiting for read and dealing with it
             match self.stream.try_read(&mut buf) {
                 Ok(0) => {
-                    continue;
+                    println!("Disconnected");
+                    break;
                 }
-                Ok(n) => { // n > 0
+                Ok(n) => {
                     let data = &buf[..n];
                     let data_string = String::from_utf8_lossy(data).to_string();
                     println!("[Server <- {}] received ({}))!", self.get_addr(), data_string);
@@ -80,8 +88,15 @@ impl<H> Conn<H> where H: RequestHandler + Sync + Send {
                     }
                     let _ = self.send_message(&response).await;
                 }
-                Err(_) => {
+                Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
                     continue;
+                }
+                Err(e) => {
+                    if e.kind() == std::io::ErrorKind::ConnectionReset {
+                    } else {
+                        eprintln!("Failed to read from socket: {}", e);
+                    }
+                    break;
                 }
             }
         }
@@ -114,5 +129,19 @@ impl<H> Conn<H> where H: RequestHandler + Sync + Send {
         }
 
         Ok(())
+    }
+}
+
+impl<H> Drop for Conn<H> where H: RequestHandler + Sync + Send {
+    fn drop(&mut self) {
+        // Making sure handler knows of client disconnect
+        let cmd = self.handler.lock().unwrap().client_disconnect(self.get_addr());
+
+        // If the handler wants to make a server request then ok
+        if let Some(cmd) = cmd {
+            self.tx.send(cmd).unwrap();
+        }
+
+        println!("[Server] Disconnected with {}", self.get_addr());
     }
 }

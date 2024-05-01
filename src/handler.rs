@@ -20,41 +20,7 @@ pub trait RequestHandler {
     /// A tuple containing the response to the request and an optional server command.
     /// 
     fn handle_request(&mut self, request: Request, origin: SocketAddr) -> (Response, Option<ServerCMD>);
-}
 
-
-
-/// Example implementation for handling requests in a chat room.
-pub struct ChatRoomHandler {}
-#[allow(dead_code, unused)]
-impl ChatRoomHandler {
-    pub fn new() -> Self {
-        ChatRoomHandler {}
-    }
-}
-#[allow(dead_code, unused)]
-impl RequestHandler for ChatRoomHandler {
-    fn handle_request(&mut self, request: Request, origin: SocketAddr) -> (Response, Option<ServerCMD>) {
-        // Handle the request, e.g., in a chat room scenario
-        let response = format!("Ok");
-
-        // Optionally, send a command to the server, e.g., broadcasting the message to all clients
-        let cmd = ServerCMD::SendAll(format!("{}: {}", origin, request));
-        (response, Some(cmd))
-    }
-}
-
-/// Test implementation for handler that just send request back to client
-pub struct SendBackHandler {}
-#[allow(dead_code, unused)]
-impl SendBackHandler {
-    pub fn new() -> Self {
-        SendBackHandler {}
-    }
-}
-#[allow(dead_code, unused)]
-impl RequestHandler for SendBackHandler {
-    fn handle_request(&mut self, request: Request, origin: SocketAddr) -> (Response, Option<ServerCMD>) {
-        (request, None)
-    }
+    fn client_connect(&mut self, addr: SocketAddr) -> Option<ServerCMD>;
+    fn client_disconnect(&mut self, addr: SocketAddr) -> Option<ServerCMD>;
 }

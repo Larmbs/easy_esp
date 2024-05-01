@@ -19,7 +19,7 @@ async fn main() -> io::Result<()> {
                     return;
                 }
             };
-            println!("Received: {}", String::from_utf8_lossy(&buf[..n]));
+            println!("- {}", String::from_utf8_lossy(&buf[..n]));
         }
     });
 
@@ -28,15 +28,12 @@ async fn main() -> io::Result<()> {
         let mut reader = BufReader::new(io::stdin());
         loop {
             let mut input = String::new();
-            print!("Enter a message (or 'quit' to exit): ");
             io::stdout().flush().await.unwrap();
             reader.read_line(&mut input).await.unwrap();
             let input = input.trim();
             if input == "quit" {
                 break;
             }
-            println!("You entered: {}", input);
-
             writer.write_all(input.as_bytes()).await.unwrap();
         }
     });

@@ -109,7 +109,7 @@ where
             tokio::select! {
                 // Accept a new connection
                 Ok((socket, addr)) = listener.accept() => {
-                    println!("[Server] Received a new connection from {}", addr);
+                    println!("[Server] Connected with {}", addr);
                     self.add_conn(socket);
                 },
                 // Receive a message from the rx channel
