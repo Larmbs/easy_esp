@@ -1,4 +1,5 @@
 use std::net::SocketAddr;
+use crate::message::Message;
 
 /// Defines commands that can be sent to the server.
 #[derive(Clone, Debug)]
@@ -7,7 +8,7 @@ pub enum ServerCMD {
     ShutDown(u32), // Error code
 
     /// Instructs the server to send a message to all connected clients.
-    SendAll(String), // Message
+    SendAll(Message), // Message
 
     /// Instructs the server to kick a certain client identified by its socket address.
     Kick(SocketAddr), // Kick a certain client
@@ -20,5 +21,5 @@ pub enum ConnCMD {
     Kick,
 
     /// Send some message to your client
-    Send(String), 
+    Send(Message), 
 }

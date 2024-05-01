@@ -1,6 +1,7 @@
 //! This module defines types and traits for handling requests and responses in a server.
 
-use super::ServerCMD;
+use crate::message::Message;
+use crate::ServerCMD;
 use std::net::SocketAddr;
 
 /// Trait for handling incoming requests.
@@ -17,9 +18,9 @@ pub trait RequestHandler {
     /// A tuple containing the response to the request and an optional server command.
     fn handle_request(
         &mut self,
-        request: String,
+        request: Message,
         origin: SocketAddr,
-    ) -> (String, Option<ServerCMD>);
+    ) -> (Message, Option<ServerCMD>);
 
     /// Notifies the handler when a client connects to the server.
     ///

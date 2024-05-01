@@ -4,7 +4,6 @@ use thiserror::Error;
 
 /// Represents an error that occurs during a connection operation.
 #[derive(Error, Debug)]
-#[allow(dead_code, unused)]
 pub enum ConnectionError {
     /// Indicates a connection timeout error.
     #[error("Connection Time Out")]

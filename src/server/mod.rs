@@ -4,29 +4,34 @@
 //! facilitates sending and receiving messages between clients.
 
 // Dependencies and Imports
-use std::{ net::SocketAddr, sync::{ Arc, Mutex } };
+use std::{
+    net::SocketAddr,
+    sync::{Arc, Mutex},
+};
 use tokio::{
-    net::{ TcpListener, TcpStream },
-    sync::broadcast::{ self, Receiver, Sender },
+    net::{TcpListener, TcpStream},
+    sync::broadcast::{self, Receiver, Sender},
     task::JoinHandle,
 };
 
 // Submodules
-mod conn; // Connection handling
-mod commands; // Command processing
-mod handler; // Request handling
+mod commands;
+mod conn; // Connection handling // Command processing
 
 // Public Interface
+use crate::handler::RequestHandler;
+pub use commands::{ConnCMD, ServerCMD};
 use conn::Conn;
-pub use handler::RequestHandler;
-pub use commands::{ ConnCMD, ServerCMD };
 
 /// The server manages client connections, verifies message formats, and handles sending and receiving messages.
 ///
 /// # Type Parameters
 ///
 /// * `H`: Type that implements the `RequestHandler` trait for handling incoming requests.
-pub struct Server<H> where H: RequestHandler + Sync + Send + 'static {
+pub struct Server<H>
+where
+    H: RequestHandler + Sync + Send + 'static,
+{
     address: SocketAddr,
 
     handles: Vec<JoinHandle<()>>,
@@ -36,7 +41,10 @@ pub struct Server<H> where H: RequestHandler + Sync + Send + 'static {
     message_handler: Arc<Mutex<H>>, // Shared handler func to handle all incoming messages
 }
 
-impl<H> Server<H> where H: RequestHandler + Sync + Send {
+impl<H> Server<H>
+where
+    H: RequestHandler + Sync + Send,
+{
     /// Returns local socket addr
     pub fn get_addr(&self) -> SocketAddr {
         self.address
@@ -48,7 +56,7 @@ impl<H> Server<H> where H: RequestHandler + Sync + Send {
             conn_stream,
             self.message_handler.clone(),
             self.send_all_tx.subscribe(),
-            self.cmd_tx.clone()
+            self.cmd_tx.clone(),
         );
 
         let handle = tokio::spawn(async move {

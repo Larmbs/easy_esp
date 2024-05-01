@@ -8,9 +8,9 @@ use tokio::net::TcpStream;
 use tokio::sync::broadcast::{Receiver, Sender};
 
 use super::{ConnCMD, ServerCMD};
-use crate::errors::ConnectionError;
-use super::RequestHandler;
-
+use crate::error::ConnectionError;
+use crate::handler::RequestHandler;
+use crate::message::{convert_to_json, parse_message_from_bytes, Message};
 /// Represents a connection to a client.
 pub struct Conn<H>
 where
@@ -78,7 +78,7 @@ where
             if let Ok(cmd) = self.rx.try_recv() {
                 match cmd {
                     ConnCMD::Send(message) => {
-                        self.send_message(&message).await.unwrap();
+                        self.send_message(message).await.unwrap();
                     }
                     ConnCMD::Kick => {
                         break;
@@ -96,22 +96,26 @@ where
                 }
                 Ok(n) => {
                     let data = &buf[..n];
-                    let data_string = String::from_utf8_lossy(data).to_string();
-                    println!(
-                        "[Server <- {}] received ({}))!",
-                        self.get_addr(),
-                        data_string
-                    );
+
+                    let message = if let Ok(message) = parse_message_from_bytes(data) {
+                        message
+                    } else {
+                        println!("Could not parse message");
+                        continue;
+                    };
+
+                    println!("[Server <- {}] received ({:?}))!", self.get_addr(), message);
 
                     let (response, cmd) = self
                         .handler
                         .lock()
                         .unwrap()
-                        .handle_request(data_string, self.get_addr());
+                        .handle_request(message, self.get_addr());
+
                     if let Some(cmd) = cmd {
                         self.tx.send(cmd).unwrap();
                     }
-                    let _ = self.send_message(&response).await;
+                    let _ = self.send_message(response).await;
                 }
                 Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
                     continue;
@@ -136,7 +140,8 @@ where
     /// # Returns
     ///
     /// A `Result` indicating whether the message was successfully sent or an error occurred.
-    pub async fn send_message(&self, message: &String) -> Result<(), ConnectionError> {
+    pub async fn send_message(&self, message: Message) -> Result<(), ConnectionError> {
+        let message_json = convert_to_json(message);
         loop {
             // Wait for the socket to be writable
             self.stream
@@ -144,9 +149,9 @@ where
                 .await
                 .map_err(|_| ConnectionError::TimedOut)?;
 
-            match self.stream.try_write(message.as_bytes()) {
+            match self.stream.try_write(message_json.as_bytes()) {
                 Ok(_) => {
-                    println!("[Server -> {}] sent ({})!", self.get_addr(), message);
+                    println!("[Server -> {}] sent ({})!", self.get_addr(), message_json);
                     break;
                 }
                 Err(e) => {

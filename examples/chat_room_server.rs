@@ -1,4 +1,4 @@
-use easy_esp::{RequestHandler, Server, ServerCMD};
+use easy_esp::{Server, ServerCMD, message::{Message, create_json_message}, handler::RequestHandler};
 use std::net::SocketAddr;
 
 
@@ -14,26 +14,29 @@ impl ChatRoomHandler {
     }
 }
 impl RequestHandler for ChatRoomHandler {
-    fn handle_request(&mut self, request: String, origin: SocketAddr) -> (String, Option<ServerCMD>) {
+    fn handle_request(&mut self, request: Message, origin: SocketAddr) -> (Message, Option<ServerCMD>) {
 
-        let response = format!("Ok");
+        let send_all_msg = create_json_message(format!("{}: {}", origin, request.body), None);
+        let cmd: ServerCMD = ServerCMD::SendAll(send_all_msg);
 
-        let cmd = ServerCMD::SendAll(format!("{}: {}", origin, request));
-        (response, Some(cmd))
+        let send_back_msg = create_json_message(String::new(), None);
+        (send_back_msg, Some(cmd))
     }
     
     fn client_connect(&mut self, addr: SocketAddr) -> Option<ServerCMD> {
         // Adds client to client list
         self.clients.push(addr);
-        
-        Some(ServerCMD::SendAll(format!("{} Connected to chat", addr)))
+
+        let msg = create_json_message(format!("{} Connected to chat", addr), None);
+        Some(ServerCMD::SendAll(msg))
     }
     
     fn client_disconnect(&mut self, addr: SocketAddr) -> Option<ServerCMD> {
         // Removes addr if it matches disconnected one
         self.clients.retain(|&x| x != addr);
 
-        Some(ServerCMD::SendAll(format!("{} Disconnect from chat", addr)))
+        let msg = create_json_message(format!("{} Disconnect from chat", addr), None);
+        Some(ServerCMD::SendAll(msg))
     }
 }
 

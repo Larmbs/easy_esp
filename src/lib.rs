@@ -2,7 +2,8 @@
 //! server management, error handling, and logging.
 
 mod server;
-mod errors;
-mod logging;
+mod error;
+pub mod handler;
+pub mod message;
 
-pub use server::{Server, ServerCMD, RequestHandler};
+pub use server::{Server, ServerCMD};
