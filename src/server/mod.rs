@@ -18,27 +18,18 @@
 //! }
 //! ```
 
-use super::errors::ConnectionError;
 use super::handler::RequestHandler;
 use std::net::SocketAddr;
-use std::sync::{ Arc, Mutex };
-use tokio::net::{ TcpListener, TcpStream };
-use tokio::sync::broadcast::{ self, Receiver, Sender };
+use std::sync::{Arc, Mutex};
+use tokio::net::{TcpListener, TcpStream};
+use tokio::sync::broadcast::{self, Receiver, Sender};
 use tokio::task::JoinHandle;
 
-/// Defines commands that can be sent to the server.
-#[derive(Clone, Debug)]
-pub enum ServerCMD {
-    /// Instructs the server to shut down with the specified error code.
-    ShutDown(u32), // Error code
+mod conn;
+use conn::Conn;
 
-    /// Instructs the server to send a message to all connected clients.
-    SendAll(String), // Message
-
-    /// Instructs the server to kick a certain client identified by its socket address.
-    Kick(SocketAddr), // Kick a certain client
-}
-
+mod commands;
+pub use commands::ServerCMD;
 
 /// The server manages client connections, verifies message formats, and handles sending and receiving messages.
 ///
@@ -54,7 +45,10 @@ pub enum ServerCMD {
 /// * `cmd_rx`: Receiver channel for receiving commands from clients.
 /// * `cmd_tx`: Sender channel for sending commands to clients.
 /// * `message_handler`: Shared handler function to handle all incoming messages.
-pub struct Server<H> where H: RequestHandler + Sync + Send + 'static {
+pub struct Server<H>
+where
+    H: RequestHandler + Sync + Send + 'static,
+{
     address: SocketAddr,
 
     handles: Vec<JoinHandle<()>>,
@@ -64,7 +58,10 @@ pub struct Server<H> where H: RequestHandler + Sync + Send + 'static {
     message_handler: Arc<Mutex<H>>, // Shared handler func to handle all incoming messages
 }
 
-impl<H> Server<H> where H: RequestHandler + Sync + Send {
+impl<H> Server<H>
+where
+    H: RequestHandler + Sync + Send,
+{
     /// Gets the socket address of the server.
     ///
     /// # Returns
@@ -84,7 +81,7 @@ impl<H> Server<H> where H: RequestHandler + Sync + Send {
             conn_stream,
             self.message_handler.clone(),
             self.send_all_tx.subscribe(),
-            self.cmd_tx.clone()
+            self.cmd_tx.clone(),
         );
 
         let handle = tokio::spawn(async move {
@@ -161,116 +158,5 @@ impl<H> Server<H> where H: RequestHandler + Sync + Send {
             cmd_tx,
             message_handler,
         }
-    }
-}
-
-
-/// Represents a connection to a client.
-pub struct Conn<H> where H: RequestHandler + Sync + Send {
-    stream: TcpStream,
-    handler: Arc<Mutex<H>>,
-    rx: Receiver<String>,
-    tx: Sender<ServerCMD>,
-}
-
-impl<H> Conn<H> where H: RequestHandler + Sync + Send {
-    /// Creates a new connection instance.
-    ///
-    /// # Arguments
-    ///
-    /// * `stream` - The TCP stream representing the connection to the client.
-    /// * `handler` - The request handler for processing incoming requests.
-    /// * `rx` - The receiver channel for receiving messages from the server.
-    /// * `tx` - The sender channel for sending commands to the server.
-    ///
-    /// # Returns
-    ///
-    /// A new `Conn` instance.
-    pub fn new(
-        stream: TcpStream,
-        handler: Arc<Mutex<H>>,
-        rx: Receiver<String>,
-        tx: Sender<ServerCMD>
-    ) -> Self {
-        Conn {
-            stream,
-            handler,
-            rx,
-            tx,
-        }
-    }
-
-    /// Gets the socket address of the client.
-    ///
-    /// # Returns
-    ///
-    /// The socket address of the client.
-    pub fn get_addr(&self) -> SocketAddr {
-        self.stream.peer_addr().unwrap()
-    }
-
-    /// Listens for messages from the client and responds using the handler function.
-    pub async fn listen(&mut self) {
-        loop {
-            // Tries to listen for any new server requests
-            if let Ok(message) = self.rx.try_recv() {
-                self.send_message(&message).await.unwrap();
-            }
-
-            let mut buf = [0; 4096];
-
-            // Waiting for read and dealing with it
-            match self.stream.try_read(&mut buf) {
-                Ok(0) => {
-                    continue;
-                }
-                Ok(n) => { // n > 0
-                    let data = &buf[..n];
-                    let data_string = String::from_utf8_lossy(data).to_string();
-                    println!("[Server <- {}] received ({}))!", self.get_addr(), data_string);
-
-                    let (response, cmd) = self.handler
-                        .lock()
-                        .unwrap()
-                        .handle_request(data_string, self.get_addr());
-                    if let Some(cmd) = cmd {
-                        self.tx.send(cmd).unwrap();
-                    }
-                    let _ = self.send_message(&response).await;
-                }
-                Err(_) => {
-                    continue;
-                }
-            }
-        }
-    }
-
-    /// Sends a message to the client.
-    ///
-    /// # Arguments
-    ///
-    /// * `message` - The message to be sent to the client.
-    ///
-    /// # Returns
-    ///
-    /// A `Result` indicating whether the message was successfully sent or an error occurred.
-    pub async fn send_message(&self, message: &String) -> Result<(), ConnectionError> {
-        loop {
-            // Wait for the socket to be writable
-            self.stream.writable().await.map_err(|_| ConnectionError::TimedOut)?;
-
-            match self.stream.try_write(message.as_bytes()) {
-                Ok(_) => {
-                    println!("[Server -> {}] sent ({})!", self.get_addr(), message);
-                    break;
-                }
-                Err(e) => {
-                    eprintln!("{:?}", e);
-                    return Err(ConnectionError::TimedOut);
-                }
-            }
-        }
-
-        Ok(())
     }
 }

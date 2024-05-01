@@ -3,9 +3,13 @@ use std::net::SocketAddr;
 
 
 // Creating a obj that implements request handler for chat room
-struct ChatRoomHandler {}
+struct ChatRoomHandler {
+    count: u32,
+}
 impl RequestHandler for ChatRoomHandler {
-    fn handle_request(&self, request: Request, origin: SocketAddr) -> (Response, Option<ServerCMD>) {
+    fn handle_request(&mut self, request: Request, origin: SocketAddr) -> (Response, Option<ServerCMD>) {
+        self.count += 1;
+
         let response = format!("Ok");
 
         let cmd = ServerCMD::SendAll(format!("{}: {}", origin, request));
@@ -19,7 +23,7 @@ async fn main() {
     let addr: SocketAddr = "127.0.0.1:5555".parse().expect("Could not parse ip addr");
 
     // Creating instance of a handler
-    let handler = ChatRoomHandler {};
+    let handler = ChatRoomHandler {count: 0 };
 
     // Creating a server obj
     let mut server = Server::new(addr, handler);

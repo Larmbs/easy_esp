@@ -19,7 +19,7 @@ pub trait RequestHandler {
     ///
     /// A tuple containing the response to the request and an optional server command.
     /// 
-    fn handle_request(&self, request: Request, origin: SocketAddr) -> (Response, Option<ServerCMD>);
+    fn handle_request(&mut self, request: Request, origin: SocketAddr) -> (Response, Option<ServerCMD>);
 }
 
 
@@ -34,7 +34,7 @@ impl ChatRoomHandler {
 }
 #[allow(dead_code, unused)]
 impl RequestHandler for ChatRoomHandler {
-    fn handle_request(&self, request: Request, origin: SocketAddr) -> (Response, Option<ServerCMD>) {
+    fn handle_request(&mut self, request: Request, origin: SocketAddr) -> (Response, Option<ServerCMD>) {
         // Handle the request, e.g., in a chat room scenario
         let response = format!("Ok");
 
@@ -54,7 +54,7 @@ impl SendBackHandler {
 }
 #[allow(dead_code, unused)]
 impl RequestHandler for SendBackHandler {
-    fn handle_request(&self, request: Request, origin: SocketAddr) -> (Response, Option<ServerCMD>) {
+    fn handle_request(&mut self, request: Request, origin: SocketAddr) -> (Response, Option<ServerCMD>) {
         (request, None)
     }
 }

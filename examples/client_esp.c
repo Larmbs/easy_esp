@@ -1,4 +1,4 @@
-#include "sdkconfig.h" //ignore
+#include "sdkconfig.h"
 #include "esp_netif.h"
 #include "esp_log.h"
 #include "nvs_flash.h"

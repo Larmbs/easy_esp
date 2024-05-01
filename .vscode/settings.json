@@ -1,5 +1,6 @@
 {
     "cSpell.words": [
         "microcontroller"
-    ]
+    ],
+    "C_Cpp.errorSquiggles": "disabled"
 }
