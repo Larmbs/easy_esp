@@ -4,6 +4,7 @@ version = "0.6.0"
 edition = "2021"
 description = "Wrapper around socket functionality to make using devices safer and easier"
 license = "MIT"
+repository = "https://github.com/Larmbs/easy_esp"
 
 [lib]
 name = "easy_esp"
